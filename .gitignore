@@ -1,0 +1,14 @@
+# --- signing and machine-local files: never commit these -----------------------
+*.keystore
+keystore.properties
+local.properties
+
+# --- build output and caches --------------------------------------------------
+build/
+app/build/
+.gradle/
+.kotlin/
+
+# --- packaged artefacts -------------------------------------------------------
+*.apk
+*.aab

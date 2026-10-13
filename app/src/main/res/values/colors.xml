@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window background while the activity starts: keep it in sync with the palette's
+         DarkBackground, otherwise the first frame flashes white in dark mode. -->
+    <color name="dark_background">#FF0F0F0F</color>
+</resources>

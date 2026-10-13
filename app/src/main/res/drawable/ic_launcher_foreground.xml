@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Launcher icon foreground: a "sidebar" mark — a rounded card with a panel on the left and
+  two rows of content. Drawn inside the central 72x72 safe zone of the 108x108 adaptive-icon
+  viewport, so no launcher mask shape clips it.
+
+  Replace the paths (or the whole file) with your own mark; keep it inside x,y ∈ [18, 90].
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- card outline -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="5"
+        android:pathData="M32,34 L76,34 A6,6 0 0 1 82,40 L82,68 A6,6 0 0 1 76,74 L32,74 A6,6 0 0 1 26,68 L26,40 A6,6 0 0 1 32,34 Z" />
+
+    <!-- the sidebar panel -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M32,37 L41,37 A2,2 0 0 1 43,39 L43,69 A2,2 0 0 1 41,71 L32,71 A2,2 0 0 1 30,69 L30,39 A2,2 0 0 1 32,37 Z" />
+
+    <!-- two content rows -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M51,45 L70,45" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M51,57 L63,57" />
+</vector>
