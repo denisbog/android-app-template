@@ -26,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -51,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.template.data.DemoSection
 import com.example.template.ui.components.AppearIn
+import com.example.template.ui.components.AppSnackbarHost
 import com.example.template.ui.components.CheckRow
 import com.example.template.ui.components.SidebarDrawerHost
 import com.example.template.ui.components.DemoSidebarContent
@@ -115,7 +115,7 @@ fun TemplateApp(viewModel: DemoViewModel = viewModel()) {
         content = {
             Scaffold(
                 containerColor = MaterialTheme.colorScheme.background,
-                snackbarHost = { SnackbarHost(snackbarHostState) },
+                snackbarHost = { AppSnackbarHost(snackbarHostState) },
                 topBar = {
                     TopAppBar(
                         title = {

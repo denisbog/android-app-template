@@ -16,6 +16,11 @@ content behind it fading, scaling and taking a rounded corner:
 
 ![drawer mid-drag](shots/drawer-drag.png)
 
+A one-shot message in the app's own snackbar — the card radius, hairline and surface fill of
+everything else, not Material's light-grey slab (see `ui/components/AppSnackbar.kt`):
+
+![snackbar](shots/snackbar.png)
+
 ## What is in the box
 
 | path | what it gives you |
@@ -23,6 +28,7 @@ content behind it fading, scaling and taking a rounded corner:
 | `ui/components/SidebarDrawer.kt` | the drawer: finger-following panel, scrim, white wash + scale/rotation on the content, edge-swipe to open, drag/tap to close, predictive back, and a **docked sidebar ≥ 600 dp** |
 | `ui/components/Sidebar.kt` | the sidebar vocabulary: brand header, group labels, pill text field, segmented selector, switch row, action rows, account-row footer with overflow menu |
 | `ui/components/Animations.kt` | shimmer brush, `AppearIn` (fade + slide), pulsing dot — no Lottie, no extra dependencies |
+| `ui/components/AppSnackbar.kt` | the app's own snackbar (`AppSnackbarHost`) — card radius, hairline, surface fill and a brand dot, instead of Material's light-grey `inverseSurface` slab; one call in the `Scaffold` |
 | `ui/theme/` | palette, type scale and the Material 3 colour schemes (dark + light) |
 | `ui/icons/DrawerIcons.kt` | the two-bar drawer glyph (everything else uses `Icons.Outlined.*`) |
 | `data/SettingsStore.kt` | persisted settings in one place (`SharedPreferences` behind a typed API) |

@@ -216,6 +216,20 @@ place.
 template removes the edge strip while the drawer is open and checks `state.isOpen` in the
 drag loop).
 
+### 3.8 Material's default snackbar ignores your theme
+
+**Symptom.** A snackbar shows up as a light grey, square-cornered slab in an otherwise dark,
+rounded, hairline-bordered app — it reads as a system banner rather than as part of the app.
+
+**Why.** `Snackbar` paints `colorScheme.inverseSurface`, and `SnackbarHost` adds no padding of
+its own. That contrast is deliberate against a *Material* colour scheme, not against a
+hand-built one.
+
+**Fix.** Give the host your own content — `SnackbarHost(state) { AppSnackbar(it) }` — and build
+the bar from the same parts as the rest of the screen: the card radius and hairline, the
+`surfaceContainer` fill and a brand dot, inset to line up with the content. See
+`ui/components/AppSnackbar.kt` (`AppSnackbarHost` wraps exactly this).
+
 ---
 
 ## 4. Emulator and scripts
