@@ -247,7 +247,39 @@ field, and the app then fails in a way that looks like a bug in the app. `input
 keycombination 113 29` (Ctrl+A) does not reach Compose fields on every image.
 
 **Fix.** `MOVE_END` (keyevent 123) followed by a generous number of `DELETE` (keyevent 67) —
-`clear_focused_field()` in `ui.sh`. Then verify the dumped field text if it matters.
+`clear_focused_field()` in `ui.sh`. `ui.sh clear <index>` is that, and `ui.sh field <index> ""`
+is the same thing.
+
+`keycombination` itself is **not** the problem — it exists on this image (it is in `input`'s own
+usage text) and works for shifted keys, which `ui.sh type-keys` relies on. Only the Ctrl+A
+*chord* fails to reach a Compose field, so do not avoid `keycombination` on this entry's account.
+
+### 4.2.1 `input text` silently drops characters
+
+**Symptom.** A password field accepts 15 characters and the login is rejected. Nothing in the
+output says anything went wrong. Measured here: a 15-character value containing an uppercase
+letter and a symbol arrived as 13 characters.
+
+**Why.** `input text` goes through the shell and the IME and drops characters it cannot deliver
+(and treats `%s` as a space). It reports success regardless.
+
+**Fix.** `ui.sh field` now reads the value back and prints what actually landed, and
+`ui.sh type-keys` types one character at a time by keycode (`input keycombination` for shifted
+characters), refusing to type anything it has no keycode for. Prefer `type-keys` for passwords
+and for any value with uppercase or symbols.
+
+### 4.2.2 `ui.sh ime off` is BACK, which can finish the activity
+
+**Symptom.** A script that hides the keyboard to take a screenshot finds itself on the launcher
+and every later step fails.
+
+**Why.** `ime off` sends `keyevent 4`. BACK hides the keyboard when the app handles back and
+finishes the activity when it does not — so it is the most destructive thing the script can do,
+and it did it silently. (ESC, `keyevent 111`, does not dismiss the IME on this image.)
+
+**Fix.** `ime off` now prints `mInputShown` and the focused window, and says so explicitly when
+BACK left the app. If you see that note, the app is missing the back handling in §1.6 — fix the
+app rather than the script.
 
 ### 4.3 `input swipe` only returns when the gesture is over
 
@@ -256,6 +288,33 @@ idle state.
 
 **Fix.** Run the swipe in the background and capture from a second process —
 `./ui.sh drag-shot <file> <x1> <y1> <x2> <y2>`.
+
+### 4.3.1 A needle that matches several places
+
+**Symptom.** A step taps the wrong control, or a "passing" test never exercised the thing it
+named. Three article cards each carry a `Match` button, so `tap "Match"` has three valid answers.
+
+**Fix.** `ui.sh tap` collapses nodes that share a centre (Compose merges semantics, so one
+control is often a parent plus its labelled child) and then, if a needle still matches more than
+one *place*, lists them and exits 1. Pick one deliberately with `NTH=2`. `ui.sh find` prints the
+same list, numbered.
+
+Labels also carry decoration — the real label is `⧉  Match`, not `Match` — so matching is a
+**substring** match by default (`TAP_EXACT=1` restores whole-string). `ui.sh here` sorts by
+screen position rather than tree order, so a dump reads like the screen.
+
+### 4.3.2 A WebView's content is not in the accessibility tree
+
+**Symptom.** `./ui.sh here` prints only the app's own chrome while an OAuth or help page is
+clearly on screen, so it looks like the page failed to load.
+
+**Why.** `uiautomator dump` does not see into a `WebView`'s document, and virtual nodes are not
+exposed for it here.
+
+**Fix.** Drive such screens by pixels: `./ui.sh shot`, measure in the image, `./ui.sh tap x y`.
+Note that the IME covers the lower half, so any field below the fold has to be scrolled into
+view — and that a WebView in a scrolling parent puts fields behind the keyboard unless the app
+gives it its own viewport with `imePadding()` (see the port in `~/llm/typing-android`).
 
 ### 4.4 Installing a release APK over a debug build fails
 
@@ -268,6 +327,33 @@ keys. Re-running the same install never helps.
 
 **Fix.** Uninstall once, then install. `test.sh` detects the failure, uninstalls and retries;
 `build-release.sh --install` does the same.
+
+### 4.4.1 A build failure is not a signature mismatch
+
+**Symptom.** `./test.sh` reports *"install failed -> uninstalling (signature mismatch?) and
+retrying"*, uninstalls the app and retries — while the real error was
+`NoSuchFileException: app/build/intermediates/dex/debug/mergeProjectDexDebug/9/classes.dex`, a
+stale build intermediate that uninstalling cannot fix.
+
+**Why.** The check was `if ! gradle … | grep -v pat`, which reports *grep's* status: a silent
+success (grep finds nothing, exits 1) also took the "failed" branch, and every failure was
+labelled a signature problem.
+
+**Fix.** `test.sh` captures the log, tests the task's real exit status, and triages: only
+`INSTALL_FAILED_UPDATE_INCOMPATIBLE` / `signatures do not match` triggers the uninstall-and-retry;
+anything else prints the failing task and suggests `rm -rf app/build`.
+
+### 4.4.2 App state survives `--cold`, so a screenshot can be a filtered screen
+
+**Symptom.** A cold-start test renders an empty list, or a title that is not the one you expect,
+and the app looks broken. The state came from the *previous* run: a search string, a filter
+toggle, a typed display name.
+
+**Why.** `--cold` is `am force-stop`, which deliberately keeps `SharedPreferences` (that is what
+makes it the right way to test persistence).
+
+**Fix.** Assert on markers rather than counts, or reset the state first. `ui.sh assert`,
+`assert-not` and `wait-for` exist for exactly this — one line, with an exit code.
 
 ### 4.5 `am start` on an already-running top activity does nothing
 

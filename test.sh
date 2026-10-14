@@ -5,7 +5,9 @@
 #   ./test.sh --no-build      # reuse the APK already in app/build/outputs/apk/debug
 #   ./test.sh --cold          # force-stop first, i.e. test a cold start
 #   AVD=pixel7_api34 ./test.sh
-#   LOG=1 SETTLE=6 ./test.sh  # wait longer before the shot + dump a logcat tail
+#   LOG=1 ./test.sh           # also dump a filtered logcat tail next to the shot
+#   SETTLE=4 ./test.sh        # extra settle after the app takes focus (default 1.5 s)
+#   WAIT_FOCUS=80 ./test.sh   # give a slow start longer to take focus (default 40 x 0.5 s)
 #
 # The emulator is started headless only when no device is attached, and is left running
 # afterwards: boot is the slow part (~20 s), every later iteration is a few seconds.
@@ -71,21 +73,50 @@ done
 # --- build & install ----------------------------------------------------------------------
 if [ "$BUILD" = 1 ]; then
   step "gradle :app:installDebug"
-  if ! "$GRADLE" :app:installDebug -q --console=plain 2>&1 | grep -v 'SDK XML'; then
-    # A release-signed build of the same id cannot be upgraded in place — the install fails
-    # with INSTALL_FAILED_UPDATE_INCOMPATIBLE and no amount of retrying helps.
-    step "install failed -> uninstalling (signature mismatch?) and retrying"
-    adb uninstall "$APP_ID" >/dev/null 2>&1 || true
-    "$GRADLE" :app:installDebug -q --console=plain 2>&1 | grep -v 'SDK XML' || true
-    adb install -r -t "$APK" | tail -1
+  # Capture the log and test the *task's* exit status. The obvious `if ! gradle … | grep -v pat`
+  # is wrong twice over: the pipeline reports grep's status, so a silent success (grep finds
+  # nothing, exits 1) reads as a failure and reinstalls the app for no reason — and a real
+  # failure was reported as "signature mismatch?" whatever it actually was.
+  log=$(mktemp)
+  if "$GRADLE" :app:installDebug -q --console=plain >"$log" 2>&1; then
+    grep -v 'SDK XML' "$log" || true
+  else
+    grep -v 'SDK XML' "$log" >&2 || true
+    if grep -qE 'INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match' "$log"; then
+      # A release-signed build of the same id cannot be upgraded in place.
+      step "signature mismatch — uninstalling and retrying"
+      adb uninstall "$APP_ID" >/dev/null 2>&1 || true
+      "$GRADLE" :app:installDebug -q --console=plain 2>&1 | grep -v 'SDK XML' || true
+      adb install -r -t "$APK" | tail -1
+    else
+      # Anything else is a build failure. The usual cause is a stale build/ intermediate
+      # (NoSuchFileException under app/build/intermediates), which no amount of uninstalling
+      # will fix and which has nothing to do with signing.
+      step "build failed — this is not a signature problem"
+      grep -E 'Execution failed for task|NoSuchFileException|error:|^e: ' "$log" | head -5 >&2 || true
+      echo "  a stale build/ intermediate looks like this: rm -rf app/build && ./test.sh" >&2
+      rm -f "$log"
+      exit 1
+    fi
   fi
+  rm -f "$log"
 fi
 
 # --- launch & capture ---------------------------------------------------------------------
 [ "$COLD" = 1 ] && adb shell am force-stop "$APP_ID"
 step "launching $ACTIVITY"
 adb shell am start -n "$ACTIVITY" >/dev/null
-sleep "${SETTLE:-3}"
+
+# `am start` returns before the window exists, and whatever was focused before is still on
+# screen — a fixed sleep once captured a screenshot of a *different app* and looked like a
+# pass. Wait until our own window has focus, then let the first frame draw.
+focused() { adb shell dumpsys window 2>/dev/null | grep -q "mCurrentFocus=.*$APP_ID/"; }
+for _ in $(seq 1 "${WAIT_FOCUS:-40}"); do
+  focused && break
+  sleep 0.5
+done
+focused || echo "warning: $APP_ID never took focus — the screenshot may show another app" >&2
+sleep "${SETTLE:-1.5}"
 mkdir -p "$(dirname "$SHOT")"
 adb exec-out screencap -p > "$SHOT"
 step "screenshot: $SHOT ($(magick identify -format '%wx%h' "$SHOT" 2>/dev/null || echo '?'))"

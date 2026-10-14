@@ -34,7 +34,7 @@ everything else, not Material's light-grey slab (see `ui/components/AppSnackbar.
 | `data/SettingsStore.kt` | persisted settings in one place (`SharedPreferences` behind a typed API) |
 | `DemoViewModel.kt` | the state holder: one `StateFlow`, one-shot messages, suspend work |
 | `TemplateApp.kt` | the shell: drawer host + top bar (menu glyph, title, actions chip) + content list |
-| `test.sh` `run.sh` `ui.sh` `build-release.sh` | the whole loop: test, drive by hand or by script, release |
+| `test.sh` `run.sh` `ui.sh` `build-release.sh` | the whole loop: test, drive by hand or by script, release — `ui.sh` also has `wait-for`/`assert` for scripted checks |
 | `docs/PITFALLS.md` | **read this once** — the traps this template already avoids, each one a bug that was hit |
 | `shots/` | reference screenshots of the demo |
 
@@ -71,9 +71,17 @@ screenshots to `shots/check.png`.
 ./test.sh                     # build + install + launch + shot
 ./test.sh --no-build          # reuse the current debug APK (fastest iteration)
 ./test.sh --cold              # force-stop first, i.e. test a cold start
-LOG=1 SETTLE=6 ./test.sh      # wait longer before the shot + dump a filtered logcat tail
+LOG=1 ./test.sh               # also dump a filtered logcat tail next to the shot
+SETTLE=4 ./test.sh            # extra settle after the app takes focus (default 1.5 s)
 AVD=pixel7_api34 ./test.sh    # pick the AVD
 ```
+
+It waits until the app's own window has focus before capturing, rather than sleeping a fixed
+time: `am start` returns before the window exists, and a fixed sleep once produced a screenshot
+of a different app that looked like a pass (`WAIT_FOCUS=80` extends that wait).
+A failure during the build is reported as a build failure with the failing task and the
+`rm -rf app/build` remedy — only a genuine `INSTALL_FAILED_UPDATE_INCOMPATIBLE` is treated as the
+debug/release signature clash.
 
 It reads `namespace` from `app/build.gradle.kts`, so renaming the app does not mean editing
 the scripts. Override with `APP_ID=… ACTIVITY=…` if you move `MainActivity`.
@@ -84,16 +92,31 @@ the scripts. Override with `APP_ID=… ACTIVITY=…` if you move `MainActivity`.
 not guessed from pixels:
 
 ```bash
-./ui.sh here                       # every text/content-desc on screen + its centre
-./ui.sh tap "Open sidebar"         # by text or content-desc
+./ui.sh here                       # everything on screen, in screen order: centre + label
+./ui.sh find "Match"               # matching controls, numbered
+./ui.sh tap "Match"                # by text or content-desc — a SUBSTRING match
 ./ui.sh tap 74 220                 # or raw pixels
-./ui.sh field 0 "Ada Lovelace"     # clear the top-most text field, then type
+./ui.sh field 0 "Ada Lovelace"     # clear the top-most text field, then type (and verify it landed)
+./ui.sh clear 0                    # just clear it
+./ui.sh type-keys "Pa55w0rd!"      # type by keycode: use when `input text` drops characters
 ./ui.sh key BACK                   # or ENTER, or 4
 ./ui.sh swipe 540 1800 540 600 300
 ./ui.sh drag-shot shots/x.png 380 900 720 900   # screenshot DURING a gesture
-./ui.sh ime off                    # hide the keyboard
+./ui.sh ime off                    # hide the keyboard (reports what BACK actually did)
 ./ui.sh shot shots/x.png
+
+./ui.sh wait-for "Saved" 10        # poll until it appears; non-zero exit on timeout
+./ui.sh assert "Saved"             # fail (exit 1) if it is not on screen
+./ui.sh assert-not "Loading"       # fail if it *is* on screen
 ```
+
+Matching is a **substring** match, because real labels carry leading glyphs and trailing arrows
+(`⧉  Match`, `Continue with your account  →`) that no caller should have to reproduce —
+`TAP_EXACT=1` restores whole-string matching. When a needle matches several different places the
+command lists them and exits 1 rather than silently tapping the first, which is how a test ends
+up green without having exercised what it names; choose one with `NTH=2`. Nodes that share a
+centre are collapsed first, since Compose merges semantics and one control is often a parent
+plus its labelled child.
 
 `drag-shot` exists because `adb shell input swipe` only returns when the gesture is over —
 a pressed state, a crosshair or a half-open drawer can only be photographed from a second

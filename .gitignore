@@ -12,3 +12,7 @@ app/build/
 # --- packaged artefacts -------------------------------------------------------
 *.apk
 *.aab
+
+# --- test output: test.sh rewrites these on every run --------------------------
+shots/check.png
+shots/check.log
